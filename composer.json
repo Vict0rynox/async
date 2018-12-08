@@ -6,8 +6,11 @@
     },
     "autoload": {
         "psr-4": {
-            "async": "src/"
-        }
+            "async\\": "src/"
+        },
+        "files": [
+            "src/function.php"
+        ]
     },
     "authors": [
         {
