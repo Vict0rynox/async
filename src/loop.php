@@ -165,6 +165,17 @@ class Scheduler
 	private $taskQueue;
 
 	/**
+	 * @var array
+	 */
+	private $waitingForRead = [];
+
+	/**
+	 * @var array
+	 */
+	private $waitingForWrite = [];
+
+
+	/**
 	 * Scheduler constructor.
 	 */
 	public function __construct()
@@ -226,6 +237,41 @@ class Scheduler
 		$this->taskQueue->enqueue($task);
 	}
 
+	/**
+	 * @param $socket
+	 * @param Task $task
+	 */
+	public function waitForRead(resource $socket, Task $task): void
+	{
+		if (!isset($this->waitingForRead[(int)$socket])) {
+			$this->waitingForRead[(int)$socket]['task'][] = $task;
+		} else {
+			$this->waitingForRead[(int)$socket] = [
+				'socket' => $socket,
+				'task' => [$task]
+			];
+		}
+	}
+
+	/**
+	 * @param $socket
+	 * @param Task $task
+	 */
+	public function waitForWrite(resource $socket, Task $task): void
+	{
+		if (!isset($this->waitingForWrite[(int)$socket])) {
+			$this->waitingForWrite[(int)$socket]['task'][] = $task;
+		} else {
+			$this->waitingForWrite[(int)$socket] = [
+				'socket' => $socket,
+				'task' => [$task]
+			];
+		}
+	}
+
+	/**
+	 *
+	 */
 	public function run(): void
 	{
 		while (!$this->taskQueue->isEmpty()) {
@@ -244,6 +290,21 @@ class Scheduler
 				$this->schedule($task);
 			}
 		}
+	}
+
+	/**
+	 * @param $timeout
+	 */
+	private function ioPull($timeout)
+	{
+		$readSockets = array_column($this->waitingForRead, 'socket');
+		$writeSockets = array_column($this->waitingForWrite, 'socket');
+
+		$expectSockets = [];
+		if (!stream_select($readSockets, $writeSockets, $expectSockets, $timeout)) {
+			return;
+		}
+		
 	}
 }
 
@@ -326,6 +387,20 @@ function execTask(Generator $coroutine)
 	return new SystemCall(function (Task $task, Scheduler $scheduler) use ($coroutine) {
 		$task->setSendValue($scheduler->newTask($coroutine));
 		$scheduler->schedule($task);
+	});
+}
+
+function waitForRead($socket)
+{
+	return new SystemCall(function (Task $task, Scheduler $scheduler) use ($socket) {
+		$scheduler->waitForRead($socket, $task);
+	});
+}
+
+function waitForWrite($socket)
+{
+	return new SystemCall(function (Task $task, Scheduler $scheduler) use ($socket) {
+		$scheduler->waitForWrite($socket, $task);
 	});
 }
 
