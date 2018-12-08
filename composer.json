@@ -1,0 +1,19 @@
+{
+    "name": "victor/asyncphp",
+    "type": "project",
+    "require-dev": {
+        "vimeo/psalm": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "async": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "victorynox",
+            "email": "victorsecuring@gmail.com"
+        }
+    ],
+    "require": {}
+}
